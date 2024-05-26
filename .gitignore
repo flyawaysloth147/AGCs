@@ -30,3 +30,18 @@
 *.exe
 *.out
 *.app
+
+# Generated Object
+*.sln
+*.vcxproj
+*.user
+*.filters
+
+# Generated Directory
+/.vs
+/bin
+/bin-int
+
+# Exception
+!premake5.exe
+!glfw3_mt.lib
