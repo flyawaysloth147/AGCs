@@ -3,6 +3,12 @@
 #include "AGCs/Logging/Log.h"
 #include "AGCs/Core/Window/Window.h"
 
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+#include <imgui_internal.h>
+
+
 #include <string>
 
 namespace AGC {
@@ -18,6 +24,10 @@ namespace AGC {
 		void init();
 		void shutdown();
 
+		void imguiInit();
+		void imguiRender();
+		void imguishutdown();
+
 	private:
 		// Application Information !not updated!
 		int m_width = 0;
@@ -29,5 +39,9 @@ namespace AGC {
 
 		// Class Variable
 		std::shared_ptr<Window> m_window;
+
+		// Imgui window parameter
+	private:
+		bool m_showDemoWindow = true;
 	};
 }

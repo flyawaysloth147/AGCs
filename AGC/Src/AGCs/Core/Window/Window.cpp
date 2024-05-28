@@ -4,6 +4,8 @@
 
 #include "AGCs/Logging/Log.h"
 
+#include <glm/glm.hpp>
+
 namespace AGC {
 
 	Window::Window(int widht, int height, std::string_view name)
@@ -47,6 +49,11 @@ namespace AGC {
 		}
 
 		AGC_INFO("Glad has been loaded with the version: {0}, {1}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+
+		glm::vec4 clearColor = { 0.01f, 0.01f, 0.01f, 1.0f }; // Set the default clear color
+		glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.a);
+
+		glfwSwapInterval(1); // Set the vsync to true
 	}
 
 	void Window::shutdown()

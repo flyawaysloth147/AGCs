@@ -10,7 +10,7 @@ workspace "Axantera Ground Control Software"
 
     outDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
     
-    include "AGC/Vendor/GLAD"
+    include "AGC/Vendor"
 
     project "AGC"
         location "AGC"
@@ -26,22 +26,25 @@ workspace "Axantera Ground Control Software"
         objdir ("%{wks.location}/bin-int/" .. outDir .. "/%{prj.name}")
 
         files {
-            "%{prj.name}/Src/**.cpp",
-            "%{prj.name}/Src/**.hpp",
-            "%{prj.name}/Src/**.h",
-            "%{prj.name}/Src/**.c"
+            "%{prj.location}/Src/**.cpp",
+            "%{prj.location}/Src/**.hpp",
+            "%{prj.location}/Src/**.h",
+            "%{prj.location}/Src/**.c"
         }
 
         includedirs {
-            "%{prj.name}/Src/",
-            "%{prj.name}/Vendor/SPDLOG/include",
-            "%{prj.name}/Vendor/GLFW/include",
-            "%{prj.name}/Vendor/Glad/include"
+            "%{prj.location}/Src/",
+            "%{prj.location}/Vendor/SPDLOG/include",
+            "%{prj.location}/Vendor/GLFW/include",
+            "%{prj.location}/Vendor/Glad/include",
+            "%{prj.location}/Vendor/GLM",
+            "%{prj.location}/Vendor/IMGUI"
         }
 
         links {
             "%{prj.location}/Vendor/GLFW/lib-vc2022/glfw3_mt.lib",
-            "Glad"
+            "Glad",
+            "ImGui"
         }
 
         filter "system:windows"
