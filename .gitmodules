@@ -8,3 +8,6 @@
 	path = AGC/Vendor/IMGUI
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "AGC/Vendor/IMPLOT"]
+	path = AGC/Vendor/IMPLOT
+	url = https://github.com/epezent/implot.git
