@@ -3,7 +3,7 @@
 #include "AGCs/Logging/Log.h"
 #include "AGCs/Core/Window/Window.h"
 
-#include <imgui.h>
+#include <implot.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui_internal.h>
@@ -43,5 +43,6 @@ namespace AGC {
 		// Imgui window parameter
 	private:
 		bool m_showDemoWindow = true;
+		bool m_ImPlotShowDemo = true;
 	};
 }

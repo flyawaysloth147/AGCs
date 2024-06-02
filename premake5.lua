@@ -38,13 +38,15 @@ workspace "Axantera Ground Control Software"
             "%{prj.location}/Vendor/GLFW/include",
             "%{prj.location}/Vendor/Glad/include",
             "%{prj.location}/Vendor/GLM",
-            "%{prj.location}/Vendor/IMGUI"
+            "%{prj.location}/Vendor/IMGUI",
+            "%{prj.location}/Vendor/IMPLOT"
         }
 
         links {
             "%{prj.location}/Vendor/GLFW/lib-vc2022/glfw3_mt.lib",
             "Glad",
-            "ImGui"
+            "ImGui",
+            "ImPlot"
         }
 
         filter "system:windows"
