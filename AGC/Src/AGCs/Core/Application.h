@@ -2,12 +2,12 @@
 
 #include "AGCs/Logging/Log.h"
 #include "AGCs/Core/Window/Window.h"
+#include "AGCs/Core/Serial.h"
 
 #include <implot.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <imgui_internal.h>
-
 
 #include <string>
 
@@ -39,6 +39,7 @@ namespace AGC {
 
 		// Class Variable
 		std::shared_ptr<Window> m_window;
+		SerialInterface* m_serial;
 
 		// Imgui window parameter
 	private:

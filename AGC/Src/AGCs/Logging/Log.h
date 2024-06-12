@@ -27,4 +27,11 @@ namespace AGC {
 #define RUNTIME_ERROR(message)		\
 AGC_CRIT(message)					\
 throw std::runtime_error(message)
+
+#define AGC_ASSERT(condition, message) {		\
+		if(condition) {							\
+			throw std::runtime_error(message);	\
+		}										\
+	}
+
 }

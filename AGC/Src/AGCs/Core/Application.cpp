@@ -24,6 +24,13 @@ namespace AGC {
 			m_window->pollEvent();
 			m_window->clear();
 
+			//Fetch Serial Data;
+			if (m_serial->available()) {
+				std::string serialData = m_serial->fetchData();
+				std::cout << serialData << std::endl;
+			}
+
+			// UI Rendering
 			ImGui_ImplGlfw_NewFrame();
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui::NewFrame();
@@ -40,12 +47,15 @@ namespace AGC {
 	void Application::init()
 	{
 		m_window = std::make_shared<Window>(m_width, m_height, m_name);
+		m_serial = new SerialInterface(9600, L"COM5", 50, NOPARITY);
 
 		imguiInit();
 	}
 
 	void Application::shutdown()
 	{
+		delete m_serial;
+
 		imguishutdown();
 	}
 
