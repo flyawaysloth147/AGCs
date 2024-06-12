@@ -59,12 +59,17 @@ namespace AGC {
 	void SerialInterface::init()
 	{
 		openConnection();
-		m_fethcerWorker = std::thread(&SerialInterface::getData, this);
+		m_fethcerWorker = std::thread(&SerialInterface::getData, this, m_jobDone);
 	}
 
 	void SerialInterface::shutdown()
 	{
-		m_fethcerWorker.join();
+		m_mutex.lock();
+		m_jobDone = true;
+		m_mutex.unlock();
+
+		if(m_fethcerWorker.joinable())
+			m_fethcerWorker.join();
 
 		closeConnection();
 	}
@@ -114,33 +119,36 @@ namespace AGC {
 		}
 	}
 
-	void SerialInterface::getData()
+	void SerialInterface::getData(bool done)
 	{
-		while (true) {
-			COMSTAT stat;
-			DWORD error;
-			char buffer[21];
+		while (!done) {
+			std::string result;
+			DWORD bytesRead;
+			char c = ' ';
 
-			if (!ClearCommError(m_hSerial, &error, &stat)) {
-				RUNTIME_ERROR("Error checking the seriap port");
-			}
+			while (true) {
+				if (ReadFile(m_hSerial, (LPVOID)&c, 1, &bytesRead, NULL)) {
+					if (bytesRead < 0)
+						continue;
 
-			if (stat.cbInQue > 0) {
-				DWORD bytesRead = 0;
-				if (ReadFile(m_hSerial, (LPVOID)buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
-					buffer[bytesRead] = '\0';
-
-					m_mutex.lock();
-					m_dataQueue.push_back(buffer);
-					m_mutex.unlock();
+					if (c == '\n')
+						break;
+					if (c == '°') {
+						result += '\u00B0';
+					}
+					else {
+						result += c;
+					}
 				}
+				else
+					std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
-			else {
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-			}
+
+			m_mutex.lock();
+			m_dataQueue.push_back(result);
+			m_mutex.unlock();
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 		}
 	}
-
 }

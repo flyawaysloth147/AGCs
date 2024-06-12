@@ -26,7 +26,7 @@ namespace AGC {
 
 		void openConnection();
 		void closeConnection();
-		void getData();
+		void getData(bool done);
 
 	private:
 		HANDLE m_hSerial = nullptr;
@@ -38,6 +38,7 @@ namespace AGC {
 
 		std::thread m_fethcerWorker;
 		std::mutex m_mutex;
+		bool m_jobDone = false;
 
 	};
 }

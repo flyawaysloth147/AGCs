@@ -46,6 +46,8 @@ namespace AGC {
 
 	void Application::init()
 	{
+		SetConsoleOutputCP(CP_UTF8);
+
 		m_window = std::make_shared<Window>(m_width, m_height, m_name);
 		m_serial = new SerialInterface(9600, L"COM5", 50, NOPARITY);
 

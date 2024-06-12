@@ -12,6 +12,8 @@ int main() {
 	app->run();
 
 	delete app;
+
+	return 0;
 }
 
 #endif // BUILD_WINDOWS
