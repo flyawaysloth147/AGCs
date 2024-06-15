@@ -26,7 +26,7 @@ namespace AGC {
 
 		void openConnection();
 		void closeConnection();
-		void getData(bool done);
+		void getData();
 
 	private:
 		HANDLE m_hSerial = nullptr;
@@ -35,6 +35,7 @@ namespace AGC {
 		int m_timeout = 50; // ms
 		int m_baudRate = 9600; 
 		std::vector<std::string> m_dataQueue;
+		bool m_connectionOpened = false;
 
 		std::thread m_fethcerWorker;
 		std::mutex m_mutex;

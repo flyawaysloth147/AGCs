@@ -27,7 +27,8 @@ namespace AGC {
 			//Fetch Serial Data;
 			if (m_serial->available()) {
 				std::string serialData = m_serial->fetchData();
-				std::cout << serialData << std::endl;
+				if(m_showConsole)
+					consoleAddLine(serialData);
 			}
 
 			// UI Rendering
@@ -49,7 +50,7 @@ namespace AGC {
 		SetConsoleOutputCP(CP_UTF8);
 
 		m_window = std::make_shared<Window>(m_width, m_height, m_name);
-		m_serial = new SerialInterface(9600, L"COM5", 50, NOPARITY);
+		m_serial = new SerialInterface(9600, L"COM3", 50, NOPARITY);
 
 		imguiInit();
 	}
@@ -114,6 +115,22 @@ namespace AGC {
 			ImGui::End();
 		}
 
+		if (ImGui::Begin("Console", &m_showConsole)) {
+
+			if (ImGui::BeginChild("Scrolling")) {
+				for (const auto& line : m_consoleBuffer) {
+					ImGui::TextWrapped("%s", line.c_str());
+				}
+
+				if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+					ImGui::SetScrollHereY(1.0f);
+				}
+
+				ImGui::EndChild();
+			}
+
+			ImGui::End();
+		}
 	}
 
 	void Application::imguishutdown()
@@ -124,4 +141,12 @@ namespace AGC {
 		ImGui::DestroyContext();
 	}
 
+	void Application::consoleAddLine(std::string& line)
+	{
+		if (m_consoleBuffer.size() >= 200) {
+			m_consoleBuffer.erase(m_consoleBuffer.begin());
+		}
+
+		m_consoleBuffer.push_back(line);
+	}
 }

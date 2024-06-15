@@ -28,6 +28,8 @@ namespace AGC {
 		void imguiRender();
 		void imguishutdown();
 
+		void consoleAddLine(std::string& line);
+
 	private:
 		// Application Information !not updated!
 		int m_width = 0;
@@ -45,5 +47,8 @@ namespace AGC {
 	private:
 		bool m_showDemoWindow = true;
 		bool m_ImPlotShowDemo = true;
+		bool m_showConsole = true;
+
+		std::vector<std::string> m_consoleBuffer;
 	};
 }
