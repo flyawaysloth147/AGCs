@@ -8,6 +8,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <codecvt>
 
 namespace AGC {
 	class SerialInterface {
@@ -18,7 +19,14 @@ namespace AGC {
 
 		std::string fetchData();
 		void recreateConnection(int baudRate, std::wstring port, int timeout, int parity);
+
 		bool available();
+		bool opened() const { return m_connectionOpened; }
+		unsigned int maxQueueSize();
+		unsigned int currentQueueSize();
+		int getParity() const { return m_parity; }
+		int getBaudRate() const { return m_baudRate; }
+		std::string getPort() const { std::wstring_convert<std::codecvt_utf8<wchar_t>> converter; return converter.to_bytes(m_port); }
 
 	private:
 		void init();

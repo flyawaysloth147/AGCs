@@ -62,6 +62,16 @@ namespace AGC {
 		return status;
 	}
 
+	unsigned int SerialInterface::maxQueueSize() {
+			std::lock_guard<std::mutex> lock(m_mutex);
+			return m_dataQueue.max_size();
+	}
+
+	unsigned int SerialInterface::currentQueueSize() {
+		std::lock_guard<std::mutex> lock(m_mutex);
+		return m_dataQueue.size();
+	}
+
 	void SerialInterface::init()
 	{
 		openConnection();
@@ -150,7 +160,7 @@ namespace AGC {
 		}
 	}
 
-	void SerialInterface::getData()
+	void SerialInterface::getData() // need to handle disconection
 	{
 		while (true) {
 			{

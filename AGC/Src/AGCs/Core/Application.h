@@ -29,6 +29,7 @@ namespace AGC {
 		void imguishutdown();
 
 		void consoleAddLine(std::string& line);
+		void VerticalSeparator(float height);
 
 	private:
 		// Application Information !not updated!
@@ -38,6 +39,7 @@ namespace AGC {
 
 		// Application Parameter
 		bool m_shouldExit = false;
+		bool m_firstTimeBoot = true;
 
 		// Class Variable
 		std::shared_ptr<Window> m_window;
