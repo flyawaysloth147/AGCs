@@ -22,7 +22,7 @@ namespace AGC {
 
 		bool available();
 		bool opened() const { return m_connectionOpened; }
-		unsigned int maxQueueSize();
+		unsigned int maxQueueSize(); 
 		unsigned int currentQueueSize();
 		int getParity() const { return m_parity; }
 		int getBaudRate() const { return m_baudRate; }
@@ -42,12 +42,13 @@ namespace AGC {
 		std::wstring m_port;
 		int m_timeout = 50; // ms
 		int m_baudRate = 9600; 
+
+		// Shared resources
 		std::vector<std::string> m_dataQueue;
 		bool m_connectionOpened = false;
+		bool m_jobDone = false;
 
 		std::thread m_fethcerWorker;
 		std::mutex m_mutex;
-		bool m_jobDone = false;
-
 	};
 }

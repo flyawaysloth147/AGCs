@@ -52,7 +52,7 @@ namespace AGC {
 		SetConsoleOutputCP(CP_UTF8);
 
 		m_window = std::make_shared<Window>(m_width, m_height, m_name);
-		m_serial = new SerialInterface(9600, L"COM4", 50, NOPARITY);
+		m_serial = new SerialInterface(9600, L"COM3", 50, NOPARITY);
 
 		imguiInit();
 	}

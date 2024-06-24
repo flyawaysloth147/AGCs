@@ -3,6 +3,8 @@
 #include "Serial.h"
 #include "AGCs/Utils/Utils.h"
 
+//	Pusing bjir multithreading
+
 namespace AGC {
 
 	SerialInterface::SerialInterface(int baudRate, std::wstring port, int timeout, int parity)
@@ -63,8 +65,8 @@ namespace AGC {
 	}
 
 	unsigned int SerialInterface::maxQueueSize() {
-			std::lock_guard<std::mutex> lock(m_mutex);
-			return m_dataQueue.max_size();
+		std::lock_guard<std::mutex> lock(m_mutex);
+		return m_dataQueue.max_size();
 	}
 
 	unsigned int SerialInterface::currentQueueSize() {
@@ -183,8 +185,26 @@ namespace AGC {
 
 					result += c;
 				}
-				else
-					std::this_thread::sleep_for(std::chrono::seconds(1));
+				else // Handling the errors
+				{
+					AGC_ERROR("Failed to fetch data");
+
+					DWORD errors;
+					COMSTAT status;
+					ClearCommError(m_hSerial, &errors, &status);
+
+					if (errors & CE_RXOVER || errors & CE_OVERRUN || errors & CE_RXPARITY || errors & CE_FRAME) {
+						AGC_ERROR("Detected error in the serial port");
+						AGC_ERROR("Stopping data fetcher");
+
+						{
+							std::lock_guard<std::mutex> lock{ m_mutex };
+							m_jobDone = true;
+						}
+
+						break;
+					}
+				}
 			}
 
 			{
