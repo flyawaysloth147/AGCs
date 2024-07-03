@@ -1,13 +1,13 @@
 #include "AGCpch.h"
 
-#include "AGCs/Core/Application.h"
+#include "AGCs/Client/Client.h"
 
 #ifdef BUILD_WINDOWS
 
 int main() {
 	AGC::Log::init();
 
-	AGC::Application* app = new AGC::Application(800, 800, "AGC Axantera Ground Control");
+	AGC::Application* app = new Client::App();
 
 	app->run();
 
