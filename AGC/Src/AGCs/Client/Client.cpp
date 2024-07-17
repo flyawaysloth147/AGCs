@@ -13,7 +13,7 @@ namespace Client {
 
 	void MainLayer::OnAttach() {
 		m_serial = new AGC::SerialInterface(9600, L"COM3", 50, NOPARITY);
-
+		m_consoleBuffer.reserve(200);
 	}
 
 	void MainLayer::OnDetach() {
@@ -21,11 +21,27 @@ namespace Client {
 	}
 
 	void MainLayer::OnUpdate(float dt) {
+		m_deltaTime = dt;
 		//Fetch Serial Data;
 		if (m_serial->available()) {
 			std::string serialData = m_serial->fetchData();
-			if (m_showConsole)
-				consoleAddLine(serialData);
+			std::string consoleOut = parseData(serialData);
+			if (m_showConsole) {
+				consoleAddLine(consoleOut);
+			}
+		}
+
+		if (AGC::Application::get()->isFirstTimeBoot()) {
+			std::string consoleMessage = "-----Serial Console-----";
+			consoleAddLine(consoleMessage);
+		}
+
+		{
+			GraphVariable::RotationGraph& graphVar = m_graphVariable.rotationGraph; //Rotation graph variable
+			static float t = 0;
+			t += dt;
+
+			graphVar.rotation.AddPoint(t, m_flightData.rotation.x, m_flightData.rotation.y, m_flightData.rotation.z);
 		}
 	}
 
@@ -39,20 +55,46 @@ namespace Client {
 		ImGui::ShowDemoWindow(&m_showDemoWindow);
 		ImPlot::ShowDemoWindow(&m_ImPlotShowDemo);
 
+		if (ImGui::Begin("Global Settings")) {
+			ImGui::SliderFloat("Graph sample lenght", &m_graphVariable.SampleLenght, 1, 30, "%.1f s");
+
+			ImGui::End();
+		}
+
 		if (ImGui::Begin("MPU")) {
+			GraphVariable::RotationGraph& graphVar = m_graphVariable.rotationGraph;
+			static ImPlotAxisFlags flags = ImPlotAxisFlags_AutoFit;   
 
-			ImFont* font = ImGui::GetFont();
-			float oldFontSize = ImGui::GetFont()->FontSize;
-			font->FontSize = oldFontSize + 10;
+			static float t = 0.0f;
+			t += m_deltaTime;
 
-			ImGui::PushFont(font);
+			if (ImPlot::BeginPlot("##Rolling", ImVec2(-1, 150))) {
 
-			ImGui::Text("Roll: ");
-			ImGui::Text("Pitch: ");
-			ImGui::Text("Yaw: ");
+				constexpr ImPlotAxisFlags axisFlags = ImPlotAxisFlags_AutoFit;
 
-			font->FontSize = oldFontSize;
-			ImGui::PopFont();
+				ImPlot::SetupAxes(nullptr, nullptr, 0, axisFlags);
+				ImPlot::SetupAxisLimits(ImAxis_X1, t - 10.0f, t, ImGuiCond_Always);
+				ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 0);
+				ImPlot::PlotLine("Roll", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].y, graphVar.rotation.Data.size(), 0, graphVar.rotation.Offset, sizeof(glm::vec2));
+				ImPlot::PlotLine("Pitch", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].z, graphVar.rotation.Data.size(), flags, graphVar.rotation.Offset, sizeof(glm::vec4));
+				ImPlot::PlotLine("Yaw", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].w, graphVar.rotation.Data.size(), flags, graphVar.rotation.Offset, sizeof(glm::vec4));
+				ImPlot::EndPlot();
+			}
+			{
+				static float seperatorHeight = 5.0f;
+
+				ImGui::Text("Roll: %f", m_flightData.rotation.x);
+				ImGui::SameLine();
+				VerticalSeparator(seperatorHeight);
+
+				ImGui::Text("Pitch: %f", m_flightData.rotation.y);
+				ImGui::SameLine();
+				VerticalSeparator(seperatorHeight);
+
+				ImGui::Text("Yaw: %f", m_flightData.rotation.z);
+				ImGui::SameLine();
+				VerticalSeparator(seperatorHeight);
+			}
 
 			ImGui::End();
 		}
@@ -73,9 +115,10 @@ namespace Client {
 			ImGui::End();
 		}
 
-		if (ImGui::Begin("Console", &m_showConsole)) {
+		if (m_showConsole) {
+			ImGui::Begin("Console", &m_showConsole);
 
-			float verticalSeparatorHeight = 15.0f;
+			constexpr float verticalSeparatorHeight = 15.0f;
 
 			ImGui::Text("COM Port: %s", m_serial->getPort().c_str());
 
@@ -124,7 +167,6 @@ namespace Client {
 				ImVec4 childBgColor = { 0.01f, 0.01f, 0.01f, 1.0f }; // console background color
 
 				ImGui::PushStyleColor(ImGuiCol_ChildBg, childBgColor);
-
 				ImGui::BeginChild("Scrolling", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Border);
 				for (const auto& line : m_consoleBuffer) {
 					ImGui::TextWrapped("%s", line.c_str());
@@ -135,22 +177,47 @@ namespace Client {
 				}
 
 				ImGui::EndChild();
-
-
 				ImGui::PopStyleColor();
 			}
 
 			ImGui::End();
 		}
 
-		if (AGC::Application::get()->isFirstTimeBoot()) {
-			std::string consoleMessage = "-----Serial Console-----";
-			consoleAddLine(consoleMessage);
+		{
+			if (ImGui::Begin("Settings")) {
+				{
+						ImGui::BeginDisabled(m_reconnectButtonDisable);
+
+					if (ImGui::Button("Reconnect")) {
+						std::wstringstream ss;
+						ss << L"COM" << m_port;
+						m_serial->recreateConnection(m_baudRate, ss.str(), 50, NOPARITY);
+						m_reconnectButtonDisable = true;
+					}
+
+						ImGui::EndDisabled();
+				}
+
+				ImGui::Separator();
+
+				{ // if the value is change it will enable the reconnect button
+					if (ImGui::InputInt("Port", &m_port))
+						m_reconnectButtonDisable = false;
+					if (ImGui::InputInt("Baudrate", &m_baudRate))
+						m_reconnectButtonDisable = false;
+				}
+
+				ImGui::End();
+			}
 		}
+
 	}
 
 	void MainLayer::consoleAddLine(std::string& line)
 	{
+		if (line.empty())
+			return;
+
 		if (m_consoleBuffer.size() >= 200) {
 			m_consoleBuffer.erase(m_consoleBuffer.begin());
 		}
@@ -167,5 +234,74 @@ namespace Client {
 		);
 		ImGui::Dummy(ImVec2(5.0f, height)); // Add spacing to the right of the separator
 		ImGui::SameLine();
+	}
+
+	std::string MainLayer::parseData(std::string& str) {
+		if (str.empty())
+			return "";
+
+		int dataType = 0;
+		std::string out;
+		sscanf(str.c_str(), "%d", &dataType);
+
+		switch (dataType)
+		{
+		case FlightDataTypeRotation:
+		{
+			sscanf(str.c_str(), "%*d %f %f %f", &m_flightData.rotation.x, &m_flightData.rotation.y, &m_flightData.rotation.z);
+			out = std::format("Rotation: Roll {} Pitch {} Yaw {}", m_flightData.rotation.x, m_flightData.rotation.y, m_flightData.rotation.z);
+			break;
+		}
+
+		case FlightDataTypePressure:
+		{
+			sscanf(str.c_str(), "%*d %f", &m_flightData.presure);
+			out = std::format("Pressure: {}", m_flightData.presure);
+			break;
+		}
+
+		case FlightDataTypeTemprature:
+		{
+			sscanf(str.c_str(), "%*d %f", &m_flightData.temprature);
+			out = std::format("Temprature: {}", m_flightData.temprature);
+			break;
+		}
+
+		case FlightDataTypeAltitude: 
+		{
+			sscanf(str.c_str(), "%*d %f", &m_flightData.altitude);
+			out = std::format("Altitude: {}", m_flightData.altitude);
+			break;
+		}
+
+		case FlightDataTypeHighestAltitude:
+		{
+			sscanf(str.c_str(), "%*d %f", &m_flightData.apogee);
+			out = std::format("Apogee: {}", m_flightData.apogee);
+			break;
+		}
+
+		case FlightDataTypePayloadSeperated:
+		{
+			m_flightData.isPayloadSeparated = true;
+			out = "Payload is separated";
+			break;
+		}
+
+		case FlightDataTypeParachuteDeployed:
+		{
+			m_flightData.isParachuteDeployed = true;
+			out = "Parachute is deploted";
+			break;
+		}
+
+		default:
+		{
+			out = std::format("Unexpected value parameter: {}", str.c_str());
+			break;
+		}
+		}
+
+		return out;
 	}
 }

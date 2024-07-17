@@ -33,7 +33,7 @@ namespace AGC {
 			m_window->clear();
 
 			for (Layer* layer : m_layerStack) {
-				layer->OnUpdate();
+				layer->OnUpdate(ImGui::GetIO().DeltaTime); //temp
 			}
 
 			for (auto it = m_layerStack.end(); it != m_layerStack.begin();) {

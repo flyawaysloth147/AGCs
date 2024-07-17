@@ -33,6 +33,8 @@ namespace AGC {
 
 	void SerialInterface::recreateConnection(int baudRate, std::wstring port, int timeout, int parity)
 	{
+		AGC_TRACE("reCreateConnection in called");
+
 		m_baudRate = baudRate;
 		m_port = port;
 		m_timeout = timeout;
@@ -46,14 +48,21 @@ namespace AGC {
 		if(m_fethcerWorker.joinable())
 			m_fethcerWorker.join();	
 
+		AGC_TRACE("Stopping fether thread");
+
 		closeConnection();
 		openConnection();
+		if (!m_connectionOpened) {
+			AGC_ERROR("Failed to reopen connection");
+			return;
+		}
 		
 		{
 			std::lock_guard<std::mutex> lock(m_mutex);
 			m_jobDone = false;
 		}		
 		m_fethcerWorker = std::thread(&SerialInterface::getData, this);
+		AGC_TRACE("Succesfully recreated the connection");
 	}
 
 	bool SerialInterface::available()
@@ -153,7 +162,7 @@ namespace AGC {
 	void SerialInterface::closeConnection()
 	{
 		if (!m_connectionOpened) {
-			AGC_WARN("Serial connection already closed");
+			AGC_WARN("Serial connection already closed")
 		}
 
 		if (m_hSerial != INVALID_HANDLE_VALUE) {
