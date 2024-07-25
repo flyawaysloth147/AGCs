@@ -1,7 +1,6 @@
 #include "AGCpch.h"
 
 #include "Serial.h"
-#include "AGCs/Utils/Utils.h"
 
 //	Pusing bjir multithreading
 
@@ -33,7 +32,7 @@ namespace AGC {
 
 	void SerialInterface::recreateConnection(int baudRate, std::wstring port, int timeout, int parity)
 	{
-		AGC_TRACE("reCreateConnection in called");
+		AGC_TRACE("reCreateConnection is called");
 
 		m_baudRate = baudRate;
 		m_port = port;
@@ -48,7 +47,7 @@ namespace AGC {
 		if(m_fethcerWorker.joinable())
 			m_fethcerWorker.join();	
 
-		AGC_TRACE("Stopping fether thread");
+		AGC_TRACE("Stopping fetcher thread");
 
 		closeConnection();
 		openConnection();
@@ -74,8 +73,14 @@ namespace AGC {
 	}
 
 	unsigned int SerialInterface::maxQueueSize() {
+		static int prevSize = 0;
+		static int maxSize = 0;
+
 		std::lock_guard<std::mutex> lock(m_mutex);
-		return m_dataQueue.max_size();
+		if (prevSize < m_dataQueue.size())
+			maxSize = m_dataQueue.size();
+		else
+			return maxSize;
 	}
 
 	unsigned int SerialInterface::currentQueueSize() {

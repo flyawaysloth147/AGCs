@@ -1,12 +1,12 @@
 #pragma once
 
 #include<string>
+#include<glm/glm.hpp>
+#include<imgui.h>
 
 namespace AGC {
 	namespace Utils {
-		std::string trimLeadingSpaces(const std::string& str) {
-			size_t start = str.find_first_not_of(' ');
-			return (start == std::string::npos) ? "" : str.substr(start);
-		}
+		std::string trimLeadingSpaces(const std::string& str);
+		constexpr glm::vec2 ImVec2Toglm(const ImVec2& val);
 	}
 }

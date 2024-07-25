@@ -1,16 +1,50 @@
 #pragma once
 
 #include "AGCs/Core/Application.h"
-#include <glm/glm.hpp>
 
-// The format of the serial data will be
+#include <glm/glm.hpp>
+#include <cstdarg>
+
+// The format of the serial data will be...
 //    int    ...
 // DataType Value, ...
 // 
 // Rotation
 //		Datatype	value	value	value
-//		  int		float	float	float
+//		  int 1		float	float	float
 //	   Ex: 1		 1.5	 3.4	 2.3
+// 
+// Pressure
+//		Datatype	value
+//		  int 2		float
+//	   Ex: 2		 1.5
+// 
+// Temprature
+//		Datatype	value
+//		  int 3		float
+//	   Ex: 3		 1.5
+// 
+// Altitude 
+//		Datatype	value
+//		  int 4		float
+//	   Ex: 4		 1.5
+// 
+// Apogee
+//		Datatype	value
+//		  int 4		float
+//	   Ex: 5		 1.5
+// 
+// Payload Seperated
+//		Datatype
+//		  int 4	
+//	   Ex: 6
+//	----------------------------->>> if this dataType is detected it will automatically change the value to true
+// 
+// Parachute Deployed
+//		Datatype
+//		  int 4	
+//	   Ex: 7
+//	----------------------------->>> if this dataType is detected it will automatically change the value to true
 // 
 // [!] The data type must be at the first of the sent data [!]
 // [!] if the first word of the text is not an integer or  [!]
@@ -20,36 +54,21 @@
 
 namespace Client {
 	// ImGui helper Struct
-	struct RollingBuffer {
-		float Span;
-		ImVector<glm::vec4> Data;
-		RollingBuffer() {
-			Span = 10.0f;
-			Data.reserve(2000);
-		}
-		void AddPoint(float x, float y, float z, float w) {
-			float xmod = fmodf(x, Span);
-			if (!Data.empty() && xmod < Data.back().x)
-				Data.shrink(0);
-			Data.push_back(glm::vec4(xmod, y, z, w));
-		}
-	};
-
 	struct ScrollingBuffer {
 		int MaxSize;
 		int Offset;
-		ImVector<glm::vec4> Data;
+		ImVector<glm::vec2> Data;
 
-		ScrollingBuffer(int max_size = 2000) {
+		ScrollingBuffer(int max_size = 1500) {
 			MaxSize = max_size;
 			Offset = 0;
 			Data.reserve(MaxSize);
 		}
-		void AddPoint(float x, float y, float z, float w) {
+		void AddPoint(float x, float y) {
 			if (Data.size() < MaxSize)
-				Data.push_back(glm::vec4(x, y, z, w));
+				Data.push_back(glm::vec2(x, y));
 			else {
-				Data[Offset] = glm::vec4(x, y, z, w);
+				Data[Offset] = glm::vec2(x, y);
 				Offset = (Offset + 1) % MaxSize;
 			}
 		}
@@ -94,30 +113,36 @@ namespace Client {
 		void OnImGuiRender() override;
 
 	private:
-		void consoleAddLine(std::string& line);
+		void consoleAddLine(std::string& line, glm::vec4 textColor = glm::vec4(1.0f));
 		void VerticalSeparator(float height);
-		std::string parseData(std::string& str);
+		std::pair<std::string, glm::vec4> parseData(std::string& str);
+		void addTextWithBackground(const glm::vec4& textColor, const glm::vec4& backgroundColor, const char* text, ...);
 
 	private:
 		AGC::SerialInterface* m_serial = nullptr;
 		FlightData m_flightData;
 		int m_baudRate = 9600;
 		int m_port = 3;
-		float m_deltaTime;
+		float m_deltaTime = 0.0f;
 
 	private: // ImGui variable
 		bool m_showDemoWindow = true;
 		bool m_ImPlotShowDemo = true;
-		bool m_showConsole = true;
 		bool m_reconnectButtonDisable = true;
-		std::vector<std::string> m_consoleBuffer;
+		bool m_consoleShowRaw = false;	
+
+		bool m_imGuiShowConsole = true;
+		std::vector<std::pair<std::string, glm::vec4>> m_consoleBuffer;
+		std::unordered_map<std::string, ImFont*> m_imGuiFontMap;
 
 	private: // ImPlot variable
 		struct GraphVariable
 		{
 			float SampleLenght = 10.0f;
 			struct RotationGraph {
-				ScrollingBuffer rotation; // x = time, y = roll, z = pitch, w = yaw
+				ScrollingBuffer roll;
+				ScrollingBuffer pitch;
+				ScrollingBuffer yaw;
 				bool showGraph = true;
 			}; RotationGraph rotationGraph;
 		};

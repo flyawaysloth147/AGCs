@@ -24,6 +24,7 @@
 #include <cstring>       // C String Manipulation functions
 #include <cctype>        // Character classification functions
 #include <cmath>         // Math functions
+#include <cstdarg>		 // VA Args handling
 
 // Standard Template Library (STL) headers
 #include <map>           // Map containers

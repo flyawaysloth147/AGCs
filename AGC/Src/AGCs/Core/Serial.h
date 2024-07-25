@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AGCs/Logging/Log.h"
+#include "AGCs/Utils/Utils.h"
 
 #include <string>
 #include <vector>

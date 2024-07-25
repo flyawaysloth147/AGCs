@@ -8,12 +8,35 @@ namespace Client {
 	}
 
 	MainLayer::~MainLayer() {
-		
+
 	}
 
 	void MainLayer::OnAttach() {
 		m_serial = new AGC::SerialInterface(9600, L"COM3", 50, NOPARITY);
 		m_consoleBuffer.reserve(200);
+
+		ImGuiIO& io = ImGui::GetIO();
+		{
+			ImFontConfig fontConfig;
+			fontConfig.SizePixels = 18.0f;
+			fontConfig.OversampleH = 3;
+			fontConfig.OversampleV - 1;
+			ImFont* font = nullptr;
+
+			font = io.Fonts->AddFontFromFileTTF("Font/Roboto-Light.ttf", 18.0f, &fontConfig);
+			io.FontDefault = font;
+		}
+		{
+			ImFontConfig fontConfig;
+			fontConfig.SizePixels = 18.0f;
+			fontConfig.OversampleH = 3;
+			fontConfig.OversampleV - 1;
+			ImFont* font = nullptr;
+
+			font = io.Fonts->AddFontFromFileTTF("Font/Roboto-Light.ttf", 25.0f, &fontConfig);
+		}
+
+		m_imGuiFontMap["LargeFont"] = io.Fonts->Fonts[1];
 	}
 
 	void MainLayer::OnDetach() {
@@ -25,9 +48,14 @@ namespace Client {
 		//Fetch Serial Data;
 		if (m_serial->available()) {
 			std::string serialData = m_serial->fetchData();
-			std::string consoleOut = parseData(serialData);
-			if (m_showConsole) {
-				consoleAddLine(consoleOut);
+
+			std::pair<std::string, glm::vec4> consoleOut = parseData(serialData);
+			if (m_imGuiShowConsole) {
+				if (m_consoleShowRaw)
+					consoleAddLine(serialData);
+				else
+					consoleAddLine(consoleOut.first, consoleOut.second);
+				
 			}
 		}
 
@@ -40,8 +68,9 @@ namespace Client {
 			GraphVariable::RotationGraph& graphVar = m_graphVariable.rotationGraph; //Rotation graph variable
 			static float t = 0;
 			t += dt;
-
-			graphVar.rotation.AddPoint(t, m_flightData.rotation.x, m_flightData.rotation.y, m_flightData.rotation.z);
+			graphVar.roll.AddPoint(t, m_flightData.rotation.x);
+			graphVar.pitch.AddPoint(t, m_flightData.rotation.y);
+			graphVar.yaw.AddPoint(t, m_flightData.rotation.z);
 		}
 	}
 
@@ -55,45 +84,73 @@ namespace Client {
 		ImGui::ShowDemoWindow(&m_showDemoWindow);
 		ImPlot::ShowDemoWindow(&m_ImPlotShowDemo);
 
-		if (ImGui::Begin("Global Settings")) {
-			ImGui::SliderFloat("Graph sample lenght", &m_graphVariable.SampleLenght, 1, 30, "%.1f s");
-
-			ImGui::End();
+		if (ImGui::BeginMainMenuBar()) {
+			if (ImGui::BeginMenu("Window")) {
+				if (ImGui::MenuItem("Console Output")) {
+					m_imGuiShowConsole = !m_imGuiShowConsole;
+				}
+				ImGui::SameLine();
+				ImGui::Checkbox("##ConsoleCheckbox", &m_imGuiShowConsole);
+				ImGui::EndMenu();
+			}
 		}
+		ImGui::EndMainMenuBar();
 
 		if (ImGui::Begin("MPU")) {
 			GraphVariable::RotationGraph& graphVar = m_graphVariable.rotationGraph;
-			static ImPlotAxisFlags flags = ImPlotAxisFlags_AutoFit;   
-
 			static float t = 0.0f;
 			t += m_deltaTime;
 
-			if (ImPlot::BeginPlot("##Rolling", ImVec2(-1, 150))) {
+			if (ImPlot::BeginPlot("Rotation Graph", ImVec2(-1, 0), ImPlotFlags_Crosshairs)) {
 
-				constexpr ImPlotAxisFlags axisFlags = ImPlotAxisFlags_AutoFit;
+				constexpr ImPlotAxisFlags XaxisFlags = ImPlotAxisFlags_NoTickLabels;
 
-				ImPlot::SetupAxes(nullptr, nullptr, 0, axisFlags);
+				ImPlot::SetupAxes(nullptr, nullptr, XaxisFlags, 0);
 				ImPlot::SetupAxisLimits(ImAxis_X1, t - 10.0f, t, ImGuiCond_Always);
 				ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 0);
-				ImPlot::PlotLine("Roll", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].y, graphVar.rotation.Data.size(), 0, graphVar.rotation.Offset, sizeof(glm::vec2));
-				ImPlot::PlotLine("Pitch", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].z, graphVar.rotation.Data.size(), flags, graphVar.rotation.Offset, sizeof(glm::vec4));
-				ImPlot::PlotLine("Yaw", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].w, graphVar.rotation.Data.size(), flags, graphVar.rotation.Offset, sizeof(glm::vec4));
+
+				ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+				ImPlot::PlotLine("Roll", &graphVar.roll.Data[0].x, &graphVar.roll.Data[0].y, graphVar.roll.Data.size(), 0, graphVar.roll.Offset, sizeof(glm::vec2));
+				ImPlot::PopStyleColor();
+
+				ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+				ImPlot::PlotLine("Pitch", &graphVar.pitch.Data[0].x, &graphVar.pitch.Data[0].y, graphVar.pitch.Data.size(), 0, graphVar.pitch.Offset, sizeof(glm::vec2));
+				ImPlot::PopStyleColor();
+
+				ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.0f, 0.0f, 1.0f, 1.0f));
+				ImPlot::PlotLine("Yaw", &graphVar.yaw.Data[0].x, &graphVar.yaw.Data[0].y, graphVar.yaw.Data.size(), 0, graphVar.yaw.Offset, sizeof(glm::vec2));
+				ImPlot::PopStyleColor();
+
 				ImPlot::EndPlot();
 			}
 			{
+				float windowSize = ImGui::GetWindowSize().x;
+				std::string text1 = std::format("Roll: %.2f", m_flightData.rotation.x);;
+				std::string text2 = std::format("Pitch: %.2f", m_flightData.rotation.y);
+				std::string text3 = std::format("Yaw: %.2f", m_flightData.rotation.z);
+				float text1Size = ImGui::CalcTextSize(text1.c_str()).x;
+				float text2Size = ImGui::CalcTextSize(text2.c_str()).x;
+				float text3Size = ImGui::CalcTextSize(text3.c_str()).x;
+				float totalWidth = text1Size + text2Size + text3Size;
+				float cursorPos = (windowSize - totalWidth) / 4.0f;
+				ImGui::SetCursorPosX(cursorPos);
+
+				ImFont* font = m_imGuiFontMap["LargeFont"];
 				static float seperatorHeight = 5.0f;
 
-				ImGui::Text("Roll: %f", m_flightData.rotation.x);
+				ImGui::PushFont(font);
+				addTextWithBackground(glm::vec4(1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.5f), "Roll: %.2f", m_flightData.rotation.x);
 				ImGui::SameLine();
 				VerticalSeparator(seperatorHeight);
 
-				ImGui::Text("Pitch: %f", m_flightData.rotation.y);
+				addTextWithBackground(glm::vec4(1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.5f), "Pitch: %.2f", m_flightData.rotation.y);
 				ImGui::SameLine();
 				VerticalSeparator(seperatorHeight);
 
-				ImGui::Text("Yaw: %f", m_flightData.rotation.z);
+				addTextWithBackground(glm::vec4(1.0f), glm::vec4(0.0f, 0.0f, 1.0f, 0.5f), "Yaw: %.2f", m_flightData.rotation.z);
 				ImGui::SameLine();
 				VerticalSeparator(seperatorHeight);
+				ImGui::PopFont();
 			}
 
 			ImGui::End();
@@ -115,8 +172,8 @@ namespace Client {
 			ImGui::End();
 		}
 
-		if (m_showConsole) {
-			ImGui::Begin("Console", &m_showConsole);
+		if (m_imGuiShowConsole) {
+			ImGui::Begin("Console", &m_imGuiShowConsole);
 
 			constexpr float verticalSeparatorHeight = 15.0f;
 
@@ -143,7 +200,7 @@ namespace Client {
 
 			{
 				VerticalSeparator(verticalSeparatorHeight);
-				ImGui::Text("Max Queue Size: %d", m_serial->maxQueueSize());
+				ImGui::Text("Max Queue Size: %d", m_serial->maxQueueSize()); // TODO: Need some fix
 			}
 
 			{
@@ -169,7 +226,10 @@ namespace Client {
 				ImGui::PushStyleColor(ImGuiCol_ChildBg, childBgColor);
 				ImGui::BeginChild("Scrolling", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Border);
 				for (const auto& line : m_consoleBuffer) {
-					ImGui::TextWrapped("%s", line.c_str());
+					ImVec4 textColor{ line.second.r, line.second.g, line.second.b, line.second.a };
+					ImGui::PushStyleColor(ImGuiCol_Text, textColor);
+					ImGui::TextWrapped("%s", line.first.c_str());
+					ImGui::PopStyleColor();
 				}
 
 				if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
@@ -186,7 +246,7 @@ namespace Client {
 		{
 			if (ImGui::Begin("Settings")) {
 				{
-						ImGui::BeginDisabled(m_reconnectButtonDisable);
+					ImGui::BeginDisabled(m_reconnectButtonDisable);
 
 					if (ImGui::Button("Reconnect")) {
 						std::wstringstream ss;
@@ -195,7 +255,7 @@ namespace Client {
 						m_reconnectButtonDisable = true;
 					}
 
-						ImGui::EndDisabled();
+					ImGui::EndDisabled();
 				}
 
 				ImGui::Separator();
@@ -207,13 +267,18 @@ namespace Client {
 						m_reconnectButtonDisable = false;
 				}
 
+				ImGui::Separator();
+
+				ImGui::Checkbox("Raw Output", &m_consoleShowRaw);
+
 				ImGui::End();
+				
 			}
 		}
 
 	}
 
-	void MainLayer::consoleAddLine(std::string& line)
+	void MainLayer::consoleAddLine(std::string& line, glm::vec4 textColor)
 	{
 		if (line.empty())
 			return;
@@ -222,7 +287,7 @@ namespace Client {
 			m_consoleBuffer.erase(m_consoleBuffer.begin());
 		}
 
-		m_consoleBuffer.push_back(line);
+		m_consoleBuffer.push_back(std::make_pair(line, textColor));
 	}
 
 	void MainLayer::VerticalSeparator(float height) {
@@ -236,14 +301,41 @@ namespace Client {
 		ImGui::SameLine();
 	}
 
-	std::string MainLayer::parseData(std::string& str) {
-		if (str.empty())
-			return "";
+	void MainLayer::addTextWithBackground(const glm::vec4& textColor, const glm::vec4& backgroundColor, const char* text, ...) {
+		ImDrawList* drawList = ImGui::GetWindowDrawList();
+		ImVec2 textPos = ImGui::GetCursorScreenPos();
 
+		// Get the size of the formatted text
+		char buffer[256]; // A buffer for the formatted text
+		va_list args;
+		va_start(args, text);
+		vsnprintf(buffer, sizeof(buffer), text, args);
+
+		ImVec2 textSize = ImGui::CalcTextSize(buffer);
+
+		ImVec2 rectMin = textPos;
+		ImVec2 rectMax = ImVec2(textPos.x + textSize.x, textPos.y + textSize.y);
+
+		ImU32 bgColor32 = ImGui::ColorConvertFloat4ToU32({ backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a });
+
+		drawList->AddRectFilled(rectMin, rectMax, bgColor32);
+
+		ImGui::SetCursorScreenPos(textPos); // Reset cursor position after drawing the rectangle
+		ImGui::PushStyleColor(ImGuiCol_Text, { textColor.r, textColor.g, textColor.b, textColor.a });
+		ImGui::TextV(text, args);
+		va_end(args);
+		ImGui::PopStyleColor();
+	}
+
+	std::pair<std::string, glm::vec4> MainLayer::parseData(std::string& str) {
 		int dataType = 0;
 		std::string out;
-		sscanf(str.c_str(), "%d", &dataType);
+		glm::vec4 outColor{ 1.0f };
 
+		if (str.empty())
+			return std::make_pair("", outColor);
+
+		sscanf(str.c_str(), "%d", &dataType);
 		switch (dataType)
 		{
 		case FlightDataTypeRotation:
@@ -267,7 +359,7 @@ namespace Client {
 			break;
 		}
 
-		case FlightDataTypeAltitude: 
+		case FlightDataTypeAltitude:
 		{
 			sscanf(str.c_str(), "%*d %f", &m_flightData.altitude);
 			out = std::format("Altitude: {}", m_flightData.altitude);
@@ -291,17 +383,18 @@ namespace Client {
 		case FlightDataTypeParachuteDeployed:
 		{
 			m_flightData.isParachuteDeployed = true;
-			out = "Parachute is deploted";
+			out = "Parachute is deployed";
 			break;
 		}
 
 		default:
 		{
 			out = std::format("Unexpected value parameter: {}", str.c_str());
+			outColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 			break;
 		}
 		}
 
-		return out;
+		return std::make_pair(out, outColor);
 	}
 }
