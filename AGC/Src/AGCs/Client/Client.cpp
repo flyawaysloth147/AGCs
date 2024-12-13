@@ -20,23 +20,39 @@ namespace Client {
 			ImFontConfig fontConfig;
 			fontConfig.SizePixels = 18.0f;
 			fontConfig.OversampleH = 3;
-			fontConfig.OversampleV - 1;
+			fontConfig.OversampleV = 1;
 			ImFont* font = nullptr;
 
 			font = io.Fonts->AddFontFromFileTTF("Font/Roboto-Light.ttf", 18.0f, &fontConfig);
+			ImGui::MergeIconsWithLatestFont(16.0f, false);
 			io.FontDefault = font;
+
 		}
 		{
 			ImFontConfig fontConfig;
 			fontConfig.SizePixels = 18.0f;
 			fontConfig.OversampleH = 3;
-			fontConfig.OversampleV - 1;
+			fontConfig.OversampleV = 1;
 			ImFont* font = nullptr;
 
 			font = io.Fonts->AddFontFromFileTTF("Font/Roboto-Light.ttf", 25.0f, &fontConfig);
+			ImGui::MergeIconsWithLatestFont(16.0f, false);
+
+		}
+		{
+			ImFontConfig fontConfig;
+			fontConfig.SizePixels = 18.0f;
+			fontConfig.OversampleH = 3;
+			fontConfig.OversampleV = 1;
+			ImFont* font = nullptr;
+
+			font = io.Fonts->AddFontFromFileTTF("Font/Roboto-Light.ttf", 30.0f, &fontConfig);
+			ImGui::MergeIconsWithLatestFont(16.0f, false);
 		}
 
 		m_imGuiFontMap["LargeFont"] = io.Fonts->Fonts[1];
+		m_imGuiFontMap["LargeFont-1"] = io.Fonts->Fonts[2];
+
 	}
 
 	void MainLayer::OnDetach() {
@@ -55,7 +71,6 @@ namespace Client {
 					consoleAddLine(serialData);
 				else
 					consoleAddLine(consoleOut.first, consoleOut.second);
-				
 			}
 		}
 
@@ -64,13 +79,20 @@ namespace Client {
 			consoleAddLine(consoleMessage);
 		}
 
+		static float t = 0;
+		t += dt;
+
 		{
 			GraphVariable::RotationGraph& graphVar = m_graphVariable.rotationGraph; //Rotation graph variable
-			static float t = 0;
-			t += dt;
-			graphVar.roll.AddPoint(t, m_flightData.rotation.x);
-			graphVar.pitch.AddPoint(t, m_flightData.rotation.y);
-			graphVar.yaw.AddPoint(t, m_flightData.rotation.z);
+			graphVar.rotation.AddPoint(t, m_flightData.rotation.x, m_flightData.rotation.y, m_flightData.rotation.z);
+		}
+		{
+			auto& graphVar = m_graphVariable.bmpGraph;
+			graphVar.bmp.AddPoint(t, m_flightData.preshure, m_flightData.temprature, m_flightData.altitude);
+		} 
+		{
+			auto& graphVar = m_graphVariable.apogeeGraph;
+			graphVar.apogee.AddPoint(t, m_flightData.apogee);
 		}
 	}
 
@@ -79,46 +101,110 @@ namespace Client {
 	}
 
 	void MainLayer::OnImGuiRender() {
-		ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+		static float t = 0.0f;
+		t += m_deltaTime;
+
+		{
+			// Set the window flags for the menu bar window
+			ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+
+			ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+			// Set the next window position and size to match the viewport's top area
+			ImGui::SetNextWindowPos(viewport->Pos);
+			ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, ImGui::GetFrameHeight()));
+			ImGui::SetNextWindowViewport(viewport->ID);
+
+			// Create the menu bar window
+			ImGui::Begin("Main Menu Bar", nullptr, window_flags);
+
+			if (ImGui::BeginMenuBar()) {
+				if (ImGui::BeginMenu("Window")) {
+					if (ImGui::MenuItem("Console Output")) {
+						m_imGuiShowConsole = !m_imGuiShowConsole;
+					}
+					ImGui::SameLine();
+					ImGui::Checkbox("##ConsoleCheckbox", &m_imGuiShowConsole);
+					ImGui::EndMenu();
+				}
+				ImGui::EndMenuBar();
+			}
+
+			ImGui::End();
+		}
+
+		{
+			// Get the main viewport
+			ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+			// Set the next window position and size to match the viewport's area below the menu bar
+			ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + ImGui::GetFrameHeight()));
+			ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - ImGui::GetFrameHeight()));
+			ImGui::SetNextWindowViewport(viewport->ID);
+
+			// Set the window flags for the docking space
+			ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+				ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+				ImGuiWindowFlags_NoBackground;
+
+			// Create the window
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+			ImGui::Begin("Main DockSpace", nullptr, window_flags);
+			ImGui::PopStyleVar(2);
+
+			// Create the docking space
+			ImGuiID dockspace_id = ImGui::GetID("MainDockspace");
+			ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+
+			ImGui::End();
+		}// Main Docking Window 
 
 		ImGui::ShowDemoWindow(&m_showDemoWindow);
 		ImPlot::ShowDemoWindow(&m_ImPlotShowDemo);
 
-		if (ImGui::BeginMainMenuBar()) {
-			if (ImGui::BeginMenu("Window")) {
-				if (ImGui::MenuItem("Console Output")) {
-					m_imGuiShowConsole = !m_imGuiShowConsole;
+		if (ImGui::Begin("MPU", nullptr, ImGuiWindowFlags_MenuBar)) {
+			static bool showGraphSize = false;
+			static float graphSize = 300.0f;
+
+			if (ImGui::BeginMenuBar()) {
+				if (ImGui::BeginMenu("Settings")) {
+					if (ImGui::MenuItem("Show Graph Size")) {
+						showGraphSize = !showGraphSize;
+					}
+					ImGui::EndMenu();
 				}
-				ImGui::SameLine();
-				ImGui::Checkbox("##ConsoleCheckbox", &m_imGuiShowConsole);
-				ImGui::EndMenu();
+				ImGui::EndMenuBar();
 			}
-		}
-		ImGui::EndMainMenuBar();
 
-		if (ImGui::Begin("MPU")) {
+			if (showGraphSize)
+				ImGui::SliderFloat("Graph size", &graphSize, 300.0f, 500.0f);
+
+			ImGui::Separator();
+
 			GraphVariable::RotationGraph& graphVar = m_graphVariable.rotationGraph;
-			static float t = 0.0f;
-			t += m_deltaTime;
 
-			if (ImPlot::BeginPlot("Rotation Graph", ImVec2(-1, 0), ImPlotFlags_Crosshairs)) {
+			if (ImPlot::BeginPlot("Rotation Graph", {-1.0f, graphSize}, ImPlotFlags_Crosshairs)) {
 
 				constexpr ImPlotAxisFlags XaxisFlags = ImPlotAxisFlags_NoTickLabels;
 
 				ImPlot::SetupAxes(nullptr, nullptr, XaxisFlags, 0);
 				ImPlot::SetupAxisLimits(ImAxis_X1, t - 10.0f, t, ImGuiCond_Always);
-				ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 0);
+				ImPlot::SetupAxisLimits(ImAxis_Y1, -1, 1);
 
 				ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-				ImPlot::PlotLine("Roll", &graphVar.roll.Data[0].x, &graphVar.roll.Data[0].y, graphVar.roll.Data.size(), 0, graphVar.roll.Offset, sizeof(glm::vec2));
+				ImPlot::PlotLine("Roll", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].y, graphVar.rotation.Data.size(), 0, graphVar.rotation.Offset, sizeof(glm::vec4));
 				ImPlot::PopStyleColor();
 
 				ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-				ImPlot::PlotLine("Pitch", &graphVar.pitch.Data[0].x, &graphVar.pitch.Data[0].y, graphVar.pitch.Data.size(), 0, graphVar.pitch.Offset, sizeof(glm::vec2));
+				ImPlot::PlotLine("Pitch", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].z, graphVar.rotation.Data.size(), 0, graphVar.rotation.Offset, sizeof(glm::vec4));
 				ImPlot::PopStyleColor();
 
 				ImPlot::PushStyleColor(ImPlotCol_Line, ImVec4(0.0f, 0.0f, 1.0f, 1.0f));
-				ImPlot::PlotLine("Yaw", &graphVar.yaw.Data[0].x, &graphVar.yaw.Data[0].y, graphVar.yaw.Data.size(), 0, graphVar.yaw.Offset, sizeof(glm::vec2));
+				ImPlot::PlotLine("Yaw", &graphVar.rotation.Data[0].x, &graphVar.rotation.Data[0].w, graphVar.rotation.Data.size(), 0, graphVar.rotation.Offset, sizeof(glm::vec4));
 				ImPlot::PopStyleColor();
 
 				ImPlot::EndPlot();
@@ -156,18 +242,131 @@ namespace Client {
 			ImGui::End();
 		}
 
-		if (ImGui::Begin("Barometric & Pressure")) {
+		if (ImGui::Begin("GPS Location")) {
+			static bool isItemClicked = false;
+			static bool isItemHovered = false;
+			ImFont* font = m_imGuiFontMap["LargeFont"];
+			ImFont* font1 = m_imGuiFontMap["LargeFont-1"];
 
-			ImGui::Text("Temperature: ");
-			ImGui::Text("Pressure: ");
-			ImGui::Text("Altitude: ");
+			if (isItemHovered)
+				ImGui::PushFont(font1);
+			else
+				ImGui::PushFont(font);
 
-			ImGui::End();
+			isItemHovered = false;
+
+			glm::vec2 windowSize = { ImGui::GetWindowSize().x, ImGui::GetWindowSize().y };
+			std::string formatedString = std::format("GPS: %.2f, %.2f", m_flightData.gpsLocation.latitude, m_flightData.gpsLocation.longitude);
+			float textSize = ImGui::CalcTextSize(formatedString.c_str()).x;
+
+			glm::vec2 cursorPos = windowSize / 2.0f;
+			cursorPos.x -= textSize / 2;
+			ImGui::SetCursorPos({ cursorPos.x, cursorPos.y });
+
+			ImGui::Text(formatedString.c_str());
+
+			if (ImGui::IsItemHovered())
+				isItemHovered = true;
+
+			if (ImGui::IsItemClicked()) {
+				std::string copiedString = "https://www.google.com/maps/place/" + std::to_string(m_flightData.gpsLocation.latitude) + ", " + std::to_string(m_flightData.gpsLocation.longitude);
+				ImGui::SetClipboardText(copiedString.c_str());
+				ImGui::InsertNotification({ ImGuiToastType_Success, 3000, "The gps coordinate has been copied to your clipboard, paste it in your browser to locate it!" });
+				isItemClicked = true;
+			}
+			ImGui::PopFont();
 		}
+		ImGui::End();
 
-		if (ImGui::Begin("Apogee")) {
+		if (ImGui::Begin("Barometric & Pressure", nullptr, ImGuiWindowFlags_MenuBar)) {
+			static bool showGraphSize = false;
+			static bool linky = true;
+			static float graphSize = 0.0f;
 
-			ImGui::Text("Apogee: 100m");
+			if (ImGui::BeginMenuBar()) {
+				if (ImGui::BeginMenu("Settings")) {
+					if (ImGui::MenuItem("Show Graph Size")) {
+						showGraphSize = !showGraphSize;
+					}
+
+					if (ImGui::MenuItem("Link Y Axis")) {
+						linky = !linky;
+					}
+					ImGui::SameLine();
+					ImGui::Checkbox("##LinkY", &linky);
+
+					ImGui::EndMenu();
+				}
+				ImGui::EndMenuBar();
+			}
+
+			if (showGraphSize)
+				ImGui::SliderFloat("Graph size", &graphSize, 0.0f, 500.0f);
+
+
+			ImGui::Separator();
+
+			auto& graphData = m_graphVariable.bmpGraph;
+
+			{
+				float windowYSize = ImGui::GetWindowSize().y;
+				float plotFinalSize = (windowYSize / 3) + graphSize;
+
+				static ImPlotRect lims(0, 1, 0, 1);
+				ImPlotLegendFlags flags = 0;
+				if (ImPlot::BeginPlot("Pressure", ImVec2(-1, plotFinalSize), flags)) {
+					ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoTickLabels, 0);
+					ImPlot::SetupAxisLimits(ImAxis_X1, t - 10.0f, t, ImPlotCond_Always);
+					ImPlot::SetupAxisLinks(ImAxis_Y1, linky ? &lims.Y.Min : nullptr, linky ? &lims.Y.Max : nullptr);
+					ImPlot::PlotLine("##Presure", &graphData.bmp.Data[0].x, &graphData.bmp.Data[0].y, graphData.bmp.Data.size(), 0, graphData.bmp.Offset, sizeof(glm::vec4));
+					ImPlot::EndPlot();
+				}
+
+				{
+					ImFont* font = m_imGuiFontMap["LargeFont"];
+					ImGui::PushFont(font);
+
+					addTextWithBackground(glm::vec4{0.0f, 0.0f, 0.0f, 1.0f}, AGC::Utils::clampRGBA(144, 213, 255, 255), "Pressure %.2f", m_flightData.preshure);
+
+					ImGui::PopFont();
+				}
+
+				if (ImPlot::BeginPlot("Temprature", ImVec2(-1, plotFinalSize), flags)) {
+					ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoTickLabels, 0);
+					ImPlot::SetupAxisLimits(ImAxis_X1, t - 10.0f, t, ImPlotCond_Always);
+					ImPlot::SetupAxisLinks(ImAxis_Y1, linky ? &lims.Y.Min : nullptr, linky ? &lims.Y.Max : nullptr);
+					ImPlot::PlotLine("##Temprature", &graphData.bmp.Data[0].x, &graphData.bmp.Data[0].z, graphData.bmp.Data.size(), 0, graphData.bmp.Offset, sizeof(glm::vec4));
+					ImPlot::EndPlot();
+				}
+
+				{
+					ImFont* font = m_imGuiFontMap["LargeFont"];
+					ImGui::PushFont(font);
+
+					addTextWithBackground(glm::vec4{ 1.0f }, AGC::Utils::hexToRGBA("#180161"), "Temprature %.2f", m_flightData.temprature);
+
+					ImGui::PopFont();
+				}
+
+				if (ImPlot::BeginPlot("Altitude & Apogee", ImVec2(-1, plotFinalSize), flags)) {
+					ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoTickLabels, 0);
+					ImPlot::SetupAxisLimits(ImAxis_X1, t - 10.0f, t, ImPlotCond_Always);
+					ImPlot::SetupAxisLinks(ImAxis_Y1, linky ? &lims.Y.Min : nullptr, linky ? &lims.Y.Max : nullptr);
+					ImPlot::PlotLine("Altitude", &graphData.bmp.Data[0].x, &graphData.bmp.Data[0].w, graphData.bmp.Data.size(), 0, graphData.bmp.Offset, sizeof(glm::vec4));
+					ImPlot::PlotLine("Apogee", &m_graphVariable.apogeeGraph.apogee.Data[0].x, &m_graphVariable.apogeeGraph.apogee.Data[0].y, m_graphVariable.apogeeGraph.apogee.Data.size(), 0, m_graphVariable.apogeeGraph.apogee.Offset, sizeof(glm::vec2));
+					ImPlot::EndPlot();
+				}
+
+				{
+					ImFont* font = m_imGuiFontMap["LargeFont"];
+					ImGui::PushFont(font);
+
+					addTextWithBackground(glm::vec4{ 1.0f }, AGC::Utils::hexToRGBA("#4F1787"), "Altitude %.2f", m_flightData.altitude);
+
+					ImGui::PopFont();
+				}
+			
+			}
 
 			ImGui::End();
 		}
@@ -200,7 +399,7 @@ namespace Client {
 
 			{
 				VerticalSeparator(verticalSeparatorHeight);
-				ImGui::Text("Max Queue Size: %d", m_serial->maxQueueSize()); // TODO: Need some fix
+				ImGui::Text("Max Queue Size: %d", m_serial->maxQueueSize()); // TODO: Need some fix ??
 			}
 
 			{
@@ -250,7 +449,7 @@ namespace Client {
 
 					if (ImGui::Button("Reconnect")) {
 						std::wstringstream ss;
-						ss << L"COM" << m_port;
+						ss << L"\\\\.\\COM" << m_port;
 						m_serial->recreateConnection(m_baudRate, ss.str(), 50, NOPARITY);
 						m_reconnectButtonDisable = true;
 					}
@@ -275,7 +474,6 @@ namespace Client {
 				
 			}
 		}
-
 	}
 
 	void MainLayer::consoleAddLine(std::string& line, glm::vec4 textColor)
@@ -335,41 +533,53 @@ namespace Client {
 		if (str.empty())
 			return std::make_pair("", outColor);
 
-		sscanf(str.c_str(), "%d", &dataType);
+		char commandChar;
+		sscanf(str.c_str(), "%c", &commandChar);
+		if (commandChar != '$')
+			return std::make_pair(str.c_str(), outColor);
+
+		sscanf(str.c_str(), "$%d", &dataType);
 		switch (dataType)
 		{
 		case FlightDataTypeRotation:
 		{
-			sscanf(str.c_str(), "%*d %f %f %f", &m_flightData.rotation.x, &m_flightData.rotation.y, &m_flightData.rotation.z);
+			sscanf(str.c_str(), "$%*d %f %f %f", &m_flightData.rotation.x, &m_flightData.rotation.y, &m_flightData.rotation.z);
 			out = std::format("Rotation: Roll {} Pitch {} Yaw {}", m_flightData.rotation.x, m_flightData.rotation.y, m_flightData.rotation.z);
 			break;
 		}
 
 		case FlightDataTypePressure:
 		{
-			sscanf(str.c_str(), "%*d %f", &m_flightData.presure);
-			out = std::format("Pressure: {}", m_flightData.presure);
+			sscanf(str.c_str(), "$%*d %f", &m_flightData.preshure);
+			out = std::format("Pressure: {}", m_flightData.preshure);
 			break;
 		}
 
 		case FlightDataTypeTemprature:
 		{
-			sscanf(str.c_str(), "%*d %f", &m_flightData.temprature);
+			sscanf(str.c_str(), "$%*d %f", &m_flightData.temprature);
 			out = std::format("Temprature: {}", m_flightData.temprature);
 			break;
 		}
 
 		case FlightDataTypeAltitude:
 		{
-			sscanf(str.c_str(), "%*d %f", &m_flightData.altitude);
+			sscanf(str.c_str(), "$%*d %f", &m_flightData.altitude);
 			out = std::format("Altitude: {}", m_flightData.altitude);
 			break;
 		}
 
 		case FlightDataTypeHighestAltitude:
 		{
-			sscanf(str.c_str(), "%*d %f", &m_flightData.apogee);
+			sscanf(str.c_str(), "$%*d %f", &m_flightData.apogee);
 			out = std::format("Apogee: {}", m_flightData.apogee);
+			break;
+		}
+			
+		case FLightDataTypeGPSLocation:
+		{
+			sscanf(str.c_str(), "$%*d %lf %lf", &m_flightData.gpsLocation.latitude , &m_flightData.gpsLocation.longitude);
+			out = std::format("GPS Location: latitude {}, longitude {}", m_flightData.gpsLocation.latitude, m_flightData.gpsLocation.longitude);
 			break;
 		}
 
@@ -386,6 +596,7 @@ namespace Client {
 			out = "Parachute is deployed";
 			break;
 		}
+
 
 		default:
 		{

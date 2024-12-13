@@ -4,6 +4,7 @@
 #include "AGCs/Core/Window/Window.h"
 #include "AGCs/Core/Serial.h"
 #include "AGCs/Core/LayerStack.h"
+#include "AGCs/Vendor/ImGui_Notify.h"
 
 #include <implot.h>
 #include <backends/imgui_impl_glfw.h>

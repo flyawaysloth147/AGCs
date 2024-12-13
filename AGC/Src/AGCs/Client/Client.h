@@ -11,7 +11,7 @@
 // 
 // Rotation
 //		Datatype	value	value	value
-//		  int 1		float	float	float
+//		  int 1		float	float	float 
 //	   Ex: 1		 1.5	 3.4	 2.3
 // 
 // Pressure
@@ -31,20 +31,26 @@
 // 
 // Apogee
 //		Datatype	value
-//		  int 4		float
+//		  int 5		float
 //	   Ex: 5		 1.5
+// 
+// GPS Location
+//		DataType	Value	value
+//		  int 6		float	float
+//	   Ex: 6		 1.5	 8.9
 // 
 // Payload Seperated
 //		Datatype
-//		  int 4	
-//	   Ex: 6
+//		  int 7
+//	   Ex: 7
 //	----------------------------->>> if this dataType is detected it will automatically change the value to true
 // 
 // Parachute Deployed
 //		Datatype
-//		  int 4	
-//	   Ex: 7
+//		  int 8
+//	   Ex: 8
 //	----------------------------->>> if this dataType is detected it will automatically change the value to true
+// 
 // 
 // [!] The data type must be at the first of the sent data [!]
 // [!] if the first word of the text is not an integer or  [!]
@@ -54,12 +60,42 @@
 
 namespace Client {
 	// ImGui helper Struct
-	struct ScrollingBuffer {
+	struct vec4ScrollingBuffer {
+		int MaxSize;
+		int Offset;
+		ImVector<glm::vec4> Data;
+
+		size_t dataSize = sizeof(glm::vec4);
+
+		vec4ScrollingBuffer(int max_size = 1500) {
+			MaxSize = max_size;
+			Offset = 0;
+			Data.reserve(MaxSize);
+		}
+		void AddPoint(float x, float y, float z, float w) {
+			if (Data.size() < MaxSize)
+				Data.push_back(glm::vec4(x, y, z, w));
+			else {
+				Data[Offset] = glm::vec4(x, y, z, w);
+				Offset = (Offset + 1) % MaxSize;
+			}
+		}
+		void Erase() {
+			if (Data.size() > 0) {
+				Data.shrink(0);
+				Offset = 0;
+			}
+		}
+	};
+
+	struct vec2ScrollingBuffer {
 		int MaxSize;
 		int Offset;
 		ImVector<glm::vec2> Data;
 
-		ScrollingBuffer(int max_size = 1500) {
+		size_t dataSize = sizeof(glm::vec2);
+
+		vec2ScrollingBuffer(int max_size = 1500) {
 			MaxSize = max_size;
 			Offset = 0;
 			Data.reserve(MaxSize);
@@ -82,12 +118,17 @@ namespace Client {
 
 	struct FlightData {
 		glm::vec3 rotation{ 1.0f }; // Roll, Pitch, Yaw
-		float presure = 0.0f;
+		float preshure = 0.0f;
 		float temprature = 0.0f;
 		float altitude = 0.0f;
 		float apogee = 0.0f;
 		bool isPayloadSeparated = false;
 		bool isParachuteDeployed = false;
+		struct GPSLocation
+		{
+			double longitude = 0.0f;
+			double latitude = 0.0f;
+		}; GPSLocation gpsLocation;
 	};
 
 	enum FlightDataType { 
@@ -97,8 +138,9 @@ namespace Client {
 		FlightDataTypeTemprature,
 		FlightDataTypeAltitude,
 		FlightDataTypeHighestAltitude,
+		FLightDataTypeGPSLocation,
 		FlightDataTypePayloadSeperated,
-		FlightDataTypeParachuteDeployed
+		FlightDataTypeParachuteDeployed,
 	};
 
 	class MainLayer : public AGC::Layer {
@@ -140,11 +182,21 @@ namespace Client {
 		{
 			float SampleLenght = 10.0f;
 			struct RotationGraph {
-				ScrollingBuffer roll;
-				ScrollingBuffer pitch;
-				ScrollingBuffer yaw;
+				vec4ScrollingBuffer rotation; // Roll, Pitch, Yaw -> y, z, w (x is the time)
 				bool showGraph = true;
 			}; RotationGraph rotationGraph;
+
+			struct BMPGraph
+			{
+				vec4ScrollingBuffer bmp;
+				bool showGraph = true;
+			}; BMPGraph bmpGraph;
+
+			struct ApogeeGraph
+			{
+				vec2ScrollingBuffer apogee;
+				bool showGraph = true;
+			}; ApogeeGraph apogeeGraph;
 		};
 
 		GraphVariable m_graphVariable;

@@ -73,14 +73,14 @@ namespace AGC {
 	}
 
 	unsigned int SerialInterface::maxQueueSize() {
-		static int prevSize = 0;
 		static int maxSize = 0;
 
 		std::lock_guard<std::mutex> lock(m_mutex);
-		if (prevSize < m_dataQueue.size())
+		if (m_dataQueue.size() > maxSize) {
 			maxSize = m_dataQueue.size();
-		else
-			return maxSize;
+		}
+
+		return maxSize;
 	}
 
 	unsigned int SerialInterface::currentQueueSize() {
@@ -233,7 +233,7 @@ namespace AGC {
 				}
 			}
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
 	}
 }

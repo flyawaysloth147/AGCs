@@ -1,11 +1,5 @@
 # Axantera Ground Control
 
-[![License](https://img.shields.io/github/license/flyawaysloth147/AGCs)](LICENSE)
-[![Contributors](https://img.shields.io/github/contributors/flyawaysloth147/AGCs)](https://github.com/flyawaysloth147/AGCs/graphs/contributors)
-[![Issues](https://img.shields.io/github/issues/flyawaysloth147/AGCs)](https://github.com/flyawaysloth147/AGCs/issues)
-[![Forks](https://img.shields.io/github/forks/flyawaysloth147/AGCs)](https://github.com/flyawaysloth147/AGCs/network/members)
-[![Stars](https://img.shields.io/github/stars/flyawaysloth147/AGCs)](https://github.com/flyawaysloth147/AGCs/stargazers)
-
 ## Table of Contents
 
 - [Project Name](#project-name)
@@ -21,13 +15,13 @@
 
 ## Description
 
-A brief description of your project, what it does, and why it exists.
+**Axantera Ground Control** is a software made by the Axantera rocket team, the purpose of this software is to visualy monitor the rocket data such as altitude and rotation, the software fetch the data through selected serial port and parse it for showing it to the screen.
 
 ## Features
 
-- Feature 1
-- Feature 2
-- Feature 3
+- Visualy shows realtime data
+- Connect to serial port easily
+- Simple yet informative UI
 
 ## Installation
 
@@ -35,25 +29,35 @@ Instructions on how to install and set up the project.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/your-repo-name.git
-
-# Navigate to the project directory
-cd your-repo-name
-
-# Install dependencies
-npm install
-
-# Run the project
-npm start
+git clone --recursive https://github.com/flyawaysloth147/AGCs.git 
 ```
 
 ## Usage
 
-Examples of how to use the project. You can include code snippets, screenshots, or any other useful information.
+**You can see the APIs for the software here in the tables below.**
 
-```python
-# Example code
-print("Hello, world!")
+Note all of the variable will be float
+
+| Data number(int)  | Data Type                  | Format (example)     |
+| -------------     | -------------              | ----------           |   
+| 1                 | Rotation(Roll, Pitch, Yaw) | 1 2.0 24.5 23.0      |   
+| 2                 | Pressure                   | 2 32.0               |   
+| 3                 | Temprature                 | 3 49.0               |   
+| 4                 | Altitude                   | 4 32.0               |   
+| 5                 | Apogee                     | 5 50.0               |   
+| 6                 | Payload seperated          | 6                    |   
+| 7                 | Parachute Deployed         | 2                    |   
+
+```c++
+// This is the example for the arduino code to send data
+// Rotation
+Serial.print("1 ");
+Serial.print(Roll); Serial.print(" ");
+Serial.print(Pitch); Serial.print(" ");
+Serial.print(Yaw);
+
+
+
 ```
 
 ## Contributing
@@ -82,7 +86,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Your Name - [your.email@example.com](mailto:your.email@example.com)
 
 Project Link: [https://github.com/yourusername/your-repo-name](https://github.com/yourusername/your-repo-name)
-
----
-
-Feel free to customize this template to better fit your project!
